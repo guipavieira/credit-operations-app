@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Operações de Crédito - PMAE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="header-text">
+                <h1>Simulador de Operações de Crédito</h1>
+                <p>Programa Municipal de Apoio ao Empreendedorismo</p>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="container">
+            <section id="credit-form">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin-bottom: 0;">Parâmetros da Simulação</h2>
+                    <button type="button" id="toggle-all-sections" class="toggle-all-btn">Recolher Todos</button>
+                </div>
+                
+                <form id="simulation-form">
+                    <!-- Horizonte e Aportes -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Horizonte e Aportes
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="simulation_months">
+                                Meses de Simulação:
+                                <span class="info-icon" data-info="Quantidade de meses que a simulação irá projetar. Recomendado: 60 meses (5 anos)">ⓘ</span>
+                            </label>
+                            <input type="number" id="simulation_months" name="simulation_months" value="60" min="1" max="240">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="aporte_inicial_fundo">
+                                Aporte Inicial do Fundo (R$):
+                                <span class="info-icon" data-info="Valor inicial disponível no fundo garantidor. Este é o capital inicial para cobrir inadimplências">ⓘ</span>
+                            </label>
+                            <input type="number" id="aporte_inicial_fundo" name="aporte_inicial_fundo" value="1000000" step="10000">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="aporte_mensal">
+                                Aporte Mensal (R$):
+                                <span class="info-icon" data-info="Valor que será aportado mensalmente no fundo. Use 0 se não houver aportes regulares">ⓘ</span>
+                            </label>
+                            <input type="number" id="aporte_mensal" name="aporte_mensal" value="0" step="1000">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="start_year">
+                                Ano Inicial:
+                                <span class="info-icon" data-info="Ano de início da simulação. Usado para aplicar as taxas SELIC correspondentes">ⓘ</span>
+                            </label>
+                            <input type="number" id="start_year" name="start_year" value="2026" min="2024" max="2030">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="alavancagem_maxima">
+                                Alavancagem Máxima:
+                                <span class="info-icon" data-info="Múltiplo máximo permitido entre saldo garantido e saldo do fundo. Ex: 3.0 = garantir até 3x o saldo do fundo">ⓘ</span>
+                            </label>
+                            <input type="number" id="alavancagem_maxima" name="alavancagem_maxima" value="3.0" step="0.1" min="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                Aportes Extras:
+                                <span class="info-icon" data-info="Aportes pontuais em meses específicos. Útil para simular captações extraordinárias">ⓘ</span>
+                            </label>
+                            <div id="aportes-container">
+                                <div class="aporte-item">
+                                    <label class="aporte-label">Mês:</label>
+                                    <input type="number" class="aporte-mes" placeholder="Mês" value="6" min="1">
+                                    <label class="aporte-label">Valor do Aporte (R$):</label>
+                                    <input type="number" class="aporte-valor" placeholder="Valor (R$)" value="5000000" step="10000">
+                                    <button type="button" class="remove-aporte">Remover</button>
+                                </div>
+                                <div class="aporte-item">
+                                    <label class="aporte-label">Mês:</label>
+                                    <input type="number" class="aporte-mes" placeholder="Mês" value="12" min="1">
+                                    <label class="aporte-label">Valor do Aporte (R$):</label>
+                                    <input type="number" class="aporte-valor" placeholder="Valor (R$)" value="14000000" step="10000">
+                                    <button type="button" class="remove-aporte">Remover</button>
+                                </div>
+                            </div>
+                            <button type="button" id="add-aporte">+ Adicionar Aporte</button>
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Prazos por Porte -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Prazos Médios por Porte (meses)
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="prazo_operacao_MEI">
+                                MEI:
+                                <span class="info-icon" data-info="Prazo médio de pagamento das operações de MEI (Microempreendedor Individual) em meses">ⓘ</span>
+                            </label>
+                            <input type="number" id="prazo_operacao_MEI" name="prazo_operacao_MEI" value="36" min="1" max="120">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="prazo_operacao_ME">
+                                ME:
+                                <span class="info-icon" data-info="Prazo médio de pagamento das operações de ME (Microempresa) em meses">ⓘ</span>
+                            </label>
+                            <input type="number" id="prazo_operacao_ME" name="prazo_operacao_ME" value="36" min="1" max="120">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="prazo_operacao_EPP">
+                                EPP:
+                                <span class="info-icon" data-info="Prazo médio de pagamento das operações de EPP (Empresa de Pequeno Porte) em meses">ⓘ</span>
+                            </label>
+                            <input type="number" id="prazo_operacao_EPP" name="prazo_operacao_EPP" value="36" min="1" max="120">
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Garantias -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Percentuais de Garantia por Porte
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="percentual_garantia_MEI">
+                                MEI (0-1):
+                                <span class="info-icon" data-info="Percentual do saldo devedor coberto pela garantia do fundo para MEI (0 a 1). Ex: 0.8 = 80%">ⓘ</span>
+                            </label>
+                            <input type="number" id="percentual_garantia_MEI" name="percentual_garantia_MEI" value="0.8" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="percentual_garantia_ME">
+                                ME (0-1):
+                                <span class="info-icon" data-info="Percentual do saldo devedor coberto pela garantia do fundo para ME (0 a 1). Ex: 0.8 = 80%">ⓘ</span>
+                            </label>
+                            <input type="number" id="percentual_garantia_ME" name="percentual_garantia_ME" value="0.8" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="percentual_garantia_EPP">
+                                EPP (0-1):
+                                <span class="info-icon" data-info="Percentual do saldo devedor coberto pela garantia do fundo para EPP (0 a 1). Ex: 0.8 = 80%">ⓘ</span>
+                            </label>
+                            <input type="number" id="percentual_garantia_EPP" name="percentual_garantia_EPP" value="0.8" step="0.01" min="0" max="1">
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Inadimplência -->
+                                        <!-- Inadimplência -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Taxas de Inadimplência por Porte
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="taxa_inadimplencia_MEI">
+                                MEI (0-1):
+                                <span class="info-icon" data-info="Percentual de operações de MEI que entram em inadimplência (0 a 1). Ex: 0.05 = 5% das operações">ⓘ</span>
+                            </label>
+                            <input type="number" id="taxa_inadimplencia_MEI" name="taxa_inadimplencia_MEI" value="0.22" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taxa_inadimplencia_ME">
+                                ME (0-1):
+                                <span class="info-icon" data-info="Percentual de operações de ME que entram em inadimplência (0 a 1). Ex: 0.05 = 5% das operações">ⓘ</span>
+                            </label>
+                            <input type="number" id="taxa_inadimplencia_ME" name="taxa_inadimplencia_ME" value="0.1" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taxa_inadimplencia_EPP">
+                                EPP (0-1):
+                                <span class="info-icon" data-info="Percentual de operações de EPP que entram em inadimplência (0 a 1). Ex: 0.05 = 5% das operações">ⓘ</span>
+                            </label>
+                            <input type="number" id="taxa_inadimplencia_EPP" name="taxa_inadimplencia_EPP" value="0.05" step="0.01" min="0" max="1">
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Taxas Aplicáveis -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Taxas Aplicáveis
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="taxa_juros_media_anual_MEI">
+                                Taxa de Juros Anual MEI (0-1):
+                                <span class="info-icon" data-info="Taxa de juros anual média cobrada nas operações de crédito para MEI. Ex: 0.20 = 20% ao ano">ⓘ</span>
+                            </label>
+                            <input type="number" id="taxa_juros_media_anual_MEI" name="taxa_juros_media_anual_MEI" value="0.20" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taxa_juros_media_anual_ME">
+                                Taxa de Juros Anual ME (0-1):
+                                <span class="info-icon" data-info="Taxa de juros anual média cobrada nas operações de crédito para ME. Ex: 0.18 = 18% ao ano">ⓘ</span>
+                            </label>
+                            <input type="number" id="taxa_juros_media_anual_ME" name="taxa_juros_media_anual_ME" value="0.18" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taxa_juros_media_anual_EPP">
+                                Taxa de Juros Anual EPP (0-1):
+                                <span class="info-icon" data-info="Taxa de juros anual média cobrada nas operações de crédito para EPP. Ex: 0.15 = 15% ao ano">ⓘ</span>
+                            </label>
+                            <input type="number" id="taxa_juros_media_anual_EPP" name="taxa_juros_media_anual_EPP" value="0.15" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taxa_juros_cv">
+                                Coef. Variação Taxa de Juros (0-1):
+                                <span class="info-icon" data-info="Coeficiente de variação da taxa de juros entre operações. Ex: 0.03 = variação de ±3%">ⓘ</span>
+                            </label>
+                            <input type="number" id="taxa_juros_cv" name="taxa_juros_cv" value="0.03" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taxa_concessao">
+                                Taxa de Concessão (0-1):
+                                <span class="info-icon" data-info="Taxa percentual cobrada sobre o valor da operação no momento da concessão. Ex: 0.0015 = 0.15%">ⓘ</span>
+                            </label>
+                            <input type="number" id="taxa_concessao" name="taxa_concessao" value="0.0015" step="0.0001" min="0" max="1">
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Recuperação e Renegociação -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Recuperação e Renegociação
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="taxa_recuperacao">
+                                Taxa de Recuperação (0-1):
+                                <span class="info-icon" data-info="Percentual do saldo devedor inadimplente que é efetivamente recuperado (0 a 1). Ex: 0.3 = 30% recuperado">ⓘ</span>
+                            </label>
+                            <input type="number" id="taxa_recuperacao" name="taxa_recuperacao" value="0.30" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="prazo_medio_renegociacao">
+                                Prazo Médio Renegociação (meses):
+                                <span class="info-icon" data-info="Prazo médio em meses para renegociação de operações inadimplentes">ⓘ</span>
+                            </label>
+                            <input type="number" id="prazo_medio_renegociacao" name="prazo_medio_renegociacao" value="12" min="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="prazo_honra">
+                                Prazo Honra (meses):
+                                <span class="info-icon" data-info="Período de carência antes de iniciar ações de recuperação/renegociação, em meses">ⓘ</span>
+                            </label>
+                            <input type="number" id="prazo_honra" name="prazo_honra" value="2" min="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="prazo_recuperacao">
+                                Prazo Recuperação (meses):
+                                <span class="info-icon" data-info="Período durante o qual o fundo tenta recuperar os créditos inadimplentes, em meses">ⓘ</span>
+                            </label>
+                            <input type="number" id="prazo_recuperacao" name="prazo_recuperacao" value="6" min="0">
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Tickets Médios -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Tickets Médios por Porte (R$)
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="ticket_medio_MEI">
+                                MEI:
+                                <span class="info-icon" data-info="Valor médio das operações de crédito para MEI (Microempreendedor Individual) em reais">ⓘ</span>
+                            </label>
+                            <input type="number" id="ticket_medio_MEI" name="ticket_medio_MEI" value="20000" step="1000">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="ticket_medio_ME">
+                                ME:
+                                <span class="info-icon" data-info="Valor médio das operações de crédito para ME (Microempresa) em reais">ⓘ</span>
+                            </label>
+                            <input type="number" id="ticket_medio_ME" name="ticket_medio_ME" value="80000" step="1000">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="ticket_medio_EPP">
+                                EPP:
+                                <span class="info-icon" data-info="Valor médio das operações de crédito para EPP (Empresa de Pequeno Porte) em reais">ⓘ</span>
+                            </label>
+                            <input type="number" id="ticket_medio_EPP" name="ticket_medio_EPP" value="150000" step="1000">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="ticket_cv">
+                                Coef. Variação Ticket (0-1):
+                                <span class="info-icon" data-info="Coeficiente de variação dos valores das operações. Ex: 0.2 = variação de ±20% em torno do ticket médio">ⓘ</span>
+                            </label>
+                            <input type="number" id="ticket_cv" name="ticket_cv" value="0.2" step="0.01" min="0" max="1">
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Proporções -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Proporções por Porte (0-1, soma = 1)
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="prop_MEI">
+                                MEI:
+                                <span class="info-icon" data-info="Proporção de operações destinadas a MEI. Os valores de MEI, ME e EPP devem somar 1 (100%)">ⓘ</span>
+                            </label>
+                            <input type="number" id="prop_MEI" name="prop_MEI" value="0.8" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="prop_ME">
+                                ME:
+                                <span class="info-icon" data-info="Proporção de operações destinadas a ME. Os valores de MEI, ME e EPP devem somar 1 (100%)">ⓘ</span>
+                            </label>
+                            <input type="number" id="prop_ME" name="prop_ME" value="0.15" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="prop_EPP">
+                                EPP:
+                                <span class="info-icon" data-info="Proporção de operações destinadas a EPP. Os valores de MEI, ME e EPP devem somar 1 (100%)">ⓘ</span>
+                            </label>
+                            <input type="number" id="prop_EPP" name="prop_EPP" value="0.05" step="0.01" min="0" max="1">
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Sistema de Amortização -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Proporções Sistema de Amortização (0-1, soma = 1)
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="prop_PRICE">
+                                PRICE:
+                                <span class="info-icon" data-info="Proporção de operações usando sistema PRICE (parcelas fixas). Os valores devem somar 1 (100%)">ⓘ</span>
+                            </label>
+                            <input type="number" id="prop_PRICE" name="prop_PRICE" value="0.5" step="0.01" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="prop_SAC">
+                                SAC:
+                                <span class="info-icon" data-info="Proporção de operações usando sistema SAC (amortização constante). Os valores devem somar 1 (100%)">ⓘ</span>
+                            </label>
+                            <input type="number" id="prop_SAC" name="prop_SAC" value="0.5" step="0.01" min="0" max="1">
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- SELIC -->
+                    <fieldset class="collapsible">
+                        <legend class="collapsible-header">
+                            <span class="toggle-icon">▼</span>
+                            Taxa SELIC Anual
+                        </legend>
+                        <div class="collapsible-content">
+                        
+                        <div class="form-group">
+                            <label for="Taxa_SELIC_2026">
+                                2026 (0-1):
+                                <span class="info-icon" data-info="Taxa SELIC anual projetada para 2026 em formato decimal. Ex: 0.125 = 12,5%">ⓘ</span>
+                            </label>
+                            <input type="number" id="Taxa_SELIC_2026" name="Taxa_SELIC_2026" value="0.125" step="0.001" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="Taxa_SELIC_2027">
+                                2027 (0-1):
+                                <span class="info-icon" data-info="Taxa SELIC anual projetada para 2027 em formato decimal. Ex: 0.105 = 10,5%">ⓘ</span>
+                            </label>
+                            <input type="number" id="Taxa_SELIC_2027" name="Taxa_SELIC_2027" value="0.105" step="0.001" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="Taxa_SELIC_2028">
+                                2028 (0-1):
+                                <span class="info-icon" data-info="Taxa SELIC anual projetada para 2028 em formato decimal. Ex: 0.10 = 10%">ⓘ</span>
+                            </label>
+                            <input type="number" id="Taxa_SELIC_2028" name="Taxa_SELIC_2028" value="0.10" step="0.001" min="0" max="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="percentual_rendimento_selic">
+                                % Rendimento SELIC (0-1):
+                                <span class="info-icon" data-info="Percentual do rendimento da SELIC efetivamente aplicado ao fundo. Ex: 0.95 = 95% da SELIC (considerando custos operacionais)">ⓘ</span>
+                            </label>
+                            <input type="number" id="percentual_rendimento_selic" name="percentual_rendimento_selic" value="0.95" step="0.01" min="0" max="1">
+                        </div>
+                        </div>
+                    </fieldset>
+
+                    <div class="form-actions">
+                        <button type="button" id="reset-btn">Restaurar Padrões</button>
+                        <button type="submit">Executar Simulação</button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="results">
+                <h2>Resultados</h2>
+                <div id="loading" style="display:none;">Processando simulação...</div>
+                <div id="error-output" style="display:none;"></div>
+                <div id="resumo-output"></div>
+                <div id="chart-output"></div>
+                
+                <!-- Sistema de Abas para Tabelas -->
+                <div id="tables-section" style="display:none;">
+                    <h3>Tabelas de Dados</h3>
+                    <div class="tabs">
+                        <button class="tab-button active" data-tab="carteira">Carteira Mensal</button>
+                        <button class="tab-button" data-tab="fundo">Fundo Mensal</button>
+                        <button class="tab-button" data-tab="operacoes">Operações</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="tab-carteira">
+                        <div class="download-buttons">
+                            <button class="download-btn" data-table="carteira">
+                                📥 Download CSV - Carteira
+                            </button>
+                        </div>
+                        <div id="table-carteira"></div>
+                    </div>
+                    
+                    <div class="tab-content" id="tab-fundo">
+                        <div class="download-buttons">
+                            <button class="download-btn" data-table="fundo">
+                                📥 Download CSV - Fundo
+                            </button>
+                        </div>
+                        <div id="table-fundo"></div>
+                    </div>
+                    
+                    <div class="tab-content" id="tab-operacoes">
+                        <div class="download-buttons">
+                            <button class="download-btn" data-table="operacoes">
+                                📥 Download CSV - Operações
+                            </button>
+                        </div>
+                        <div id="table-operacoes"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+    
+    <script src="{{ url_for('static', filename='js/tooltips.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
