@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Inicializa botão de recolher/expandir todos
     initializeToggleAllSections();
+    
+    // Inicializa slider de volume de operações
+    initializeVolumeSlider();
 
     // Adicionar novo aporte extra
     addAporteBtn.addEventListener('click', function() {
@@ -215,8 +218,16 @@ function displayResumo(resumo) {
                     <span class="value">${(resumo.taxa_inadimplencia_qtd * 100).toFixed(2)}%</span>
                 </div>
                 <div class="resumo-item">
+                    <span class="label">Taxa Inadimplência (Valor):</span>
+                    <span class="value">${(resumo.taxa_inadimplencia_valor * 100).toFixed(2)}%</span>
+                </div>
+                <div class="resumo-item">
                     <span class="label">Desembolso Acumulado:</span>
                     <span class="value">R$ ${formatMoney(resumo.desembolso_acumulado)}</span>
+                </div>
+                <div class="resumo-item">
+                    <span class="label">Ticket Médio das Operações:</span>
+                    <span class="value">R$ ${formatMoney(resumo.ticket_medio)}</span>
                 </div>
             </div>
         </div>
@@ -468,6 +479,28 @@ function initializeToggleAllSections() {
             // Alterna o estado e o texto do botão
             allCollapsed = !allCollapsed;
             toggleBtn.textContent = allCollapsed ? 'Expandir Todos' : 'Recolher Todos';
+        });
+    }
+}
+
+// Inicializa o slider de volume de operações
+function initializeVolumeSlider() {
+    const slider = document.getElementById('multiplicador_volume_operacoes');
+    const valueDisplay = document.getElementById('volume_value');
+    
+    if (slider && valueDisplay) {
+        slider.addEventListener('input', function() {
+            const percentage = Math.round(this.value * 100);
+            valueDisplay.textContent = percentage + '%';
+            
+            // Atualiza cor do texto baseado no valor
+            if (this.value < 0.7) {
+                valueDisplay.style.color = '#28a745'; // Verde para conservador
+            } else if (this.value > 1.3) {
+                valueDisplay.style.color = '#dc3545'; // Vermelho para agressivo
+            } else {
+                valueDisplay.style.color = '#007bff'; // Azul para padrão
+            }
         });
     }
 }

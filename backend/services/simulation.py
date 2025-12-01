@@ -68,6 +68,7 @@ def get_default_params() -> Dict:
             {"capital_ate": 40_000_000, "max_ops_mensal": 200},
         ],
         "meses_rampa_crescimento": 6,
+        "multiplicador_volume_operacoes": 1.0,
         "prop_MEI": 0.8,
         "prop_ME": 0.15,
         "prop_EPP": 0.05,
@@ -427,6 +428,10 @@ def run_simulation(params: Dict):
         else:
             # Após rampa completa, usa o teto da faixa atual
             target_ops_this_month = max_ops_faixa_atual
+        
+        # Aplica multiplicador de volume de operações
+        multiplicador = params.get("multiplicador_volume_operacoes", 1.0)
+        target_ops_this_month = int(round(target_ops_this_month * multiplicador))
 
         limite_operacional = saldo_fundo * params["alavancagem_maxima"]
         valor_garantido_at_start = compute_valor_garantido_mes(mes)
@@ -555,9 +560,11 @@ def run_simulation(params: Dict):
             if ptr < len(saldos):
                 soma_saldos += saldos[ptr]
         
-        # Calcula taxa de inadimplência por quantidade
+        # Calcula taxa de inadimplência por quantidade e por valor
         qtd_ops_inadimplentes_materializadas = 0
         qtd_ops_contratadas_total = 0
+        saldo_devedor_ops_inadimplentes = 0.0
+        valor_ops_contratadas_total = 0.0
         
         for op in ops:
             opid = op["id_operacao"]
@@ -568,6 +575,7 @@ def run_simulation(params: Dict):
                 continue
             
             qtd_ops_contratadas_total += 1
+            valor_ops_contratadas_total += op["valor_financiado"]
             
             # Verifica se operação é inadimplente e já inadimpliu de fato
             if op.get("status_operacao_initial") == "Inadimplente":
@@ -576,9 +584,15 @@ def run_simulation(params: Dict):
                 # Conta apenas operações que JÁ INADIMPLIRAM
                 if mes_inad is not None and mes_inad <= mes:
                     qtd_ops_inadimplentes_materializadas += 1
+                    # Usa o saldo devedor no momento da inadimplência
+                    saldo_devedor_inad = op.get("_saldo_devedor_inad", 0.0)
+                    saldo_devedor_ops_inadimplentes += saldo_devedor_inad
         
         # Taxa de Inadimplência por Quantidade: operações que JÁ inadimpliram / total de operações contratadas
         taxa_inadimplencia_qtd = (qtd_ops_inadimplentes_materializadas / qtd_ops_contratadas_total) if qtd_ops_contratadas_total > 0 else 0.0
+        
+        # Taxa de Inadimplência por Valor: saldo devedor das operações inadimplentes / total de valores contratados
+        taxa_inadimplencia_valor = (saldo_devedor_ops_inadimplentes / valor_ops_contratadas_total) if valor_ops_contratadas_total > 0 else 0.0
         
         # Índice SGC: janela móvel de 60 meses
         # Soma valores dos últimos 60 meses (ou desde o início se < 60 meses)
@@ -611,6 +625,7 @@ def run_simulation(params: Dict):
             "honras_acumuladas": round(float(cumulative_honras), 2),
             "recuperacoes_acumuladas": round(float(cumulative_recuperacoes), 2),
             "taxa_inadimplencia_qtd": round(float(taxa_inadimplencia_qtd), 4),
+            "taxa_inadimplencia_valor": round(float(taxa_inadimplencia_valor), 4),
             "indice_sgc": round(float(indice_sgc), 4),
             "avais_concedidos_mes": round(float(avais_concedidos_mes), 2),
             "avais_concedidos_janela_60m": round(float(avais_janela), 2),
@@ -681,6 +696,7 @@ def generate_plotly_chart(df_carteira: pd.DataFrame, df_fundo: pd.DataFrame) -> 
     inad_cum = df_carteira["operacoes_inadimplentes_novas"].cumsum().tolist()
     indice_sgc = df_carteira["indice_sgc"].tolist()
     taxa_inad_qtd = df_carteira["taxa_inadimplencia_qtd"].tolist()
+    taxa_inad_valor = df_carteira["taxa_inadimplencia_valor"].tolist()
     ops_novas_mes = df_carteira["operacoes_novas_mes"].tolist()
     paused_list = df_carteira["paused"].tolist()
     
@@ -734,7 +750,7 @@ def generate_plotly_chart(df_carteira: pd.DataFrame, df_fundo: pd.DataFrame) -> 
         secondary_y=False
     )
 
-    # Eixo direito - Índice SGC e Taxa de Inadimplência por Qtd
+    # Eixo direito - Índice SGC e Taxas de Inadimplência
     fig.add_trace(
         go.Scatter(x=months, y=indice_sgc, 
                    name="Índice SGC (60m)", 
@@ -750,8 +766,18 @@ def generate_plotly_chart(df_carteira: pd.DataFrame, df_fundo: pd.DataFrame) -> 
                    name="Taxa Inad. (Qtd)", 
                    line=dict(width=2.5, color='orangered', dash='solid'),
                    mode='lines',
-                   hovertemplate='Taxa Inadimplência: %{customdata:.2f}%<extra></extra>',
+                   hovertemplate='Taxa Inadimplência (Qtd): %{customdata:.2f}%<extra></extra>',
                    customdata=[v * 100 for v in taxa_inad_qtd]),
+        secondary_y=True
+    )
+    
+    fig.add_trace(
+        go.Scatter(x=months, y=taxa_inad_valor, 
+                   name="Taxa Inad. (Valor)", 
+                   line=dict(width=2.5, color='red', dash='dashdot'),
+                   mode='lines',
+                   hovertemplate='Taxa Inadimplência (Valor): %{customdata:.2f}%<extra></extra>',
+                   customdata=[v * 100 for v in taxa_inad_valor]),
         secondary_y=True
     )
 
@@ -769,8 +795,9 @@ def generate_plotly_chart(df_carteira: pd.DataFrame, df_fundo: pd.DataFrame) -> 
     # Isso dá bastante espaço visual e evita que as barras dominem o plot
     max_ops = max(ops_novas_mes) if ops_novas_mes else 100
     max_indice_sgc = max(indice_sgc) if indice_sgc else 1.0
-    max_taxa_inad = max(taxa_inad_qtd) if taxa_inad_qtd else 1.0
-    max_indice = max(max_indice_sgc, max_taxa_inad)
+    max_taxa_inad_qtd = max(taxa_inad_qtd) if taxa_inad_qtd else 1.0
+    max_taxa_inad_valor = max(taxa_inad_valor) if taxa_inad_valor else 1.0
+    max_indice = max(max_indice_sgc, max_taxa_inad_qtd, max_taxa_inad_valor)
     yaxis_right_max = max(max_ops * 2.0, max_indice * 1.1)
     
     # Eixo Y direito - força começar em zero para alinhar com eixo esquerdo

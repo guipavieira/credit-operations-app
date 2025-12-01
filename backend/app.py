@@ -55,15 +55,22 @@ def simulate():
         # Conta total de operações inadimplentes acumuladas
         total_inadimplentes = int(df_carteira["operacoes_inadimplentes_novas"].sum())
         
+        # Calcula ticket médio das operações (desembolso acumulado / total de operações)
+        total_ops = int(ultimo_mes_carteira["operacoes_realizadas_acum"])
+        desembolso_total = float(ultimo_mes_carteira["desembolso_acum"])
+        ticket_medio = desembolso_total / total_ops if total_ops > 0 else 0.0
+        
         resumo = {
             "saldo_final_fundo": float(ultimo_mes_fundo["saldo_final"]),
-            "total_operacoes": int(ultimo_mes_carteira["operacoes_realizadas_acum"]),
+            "total_operacoes": total_ops,
             "honras_acumuladas": float(ultimo_mes_carteira["honras_acumuladas"]),
             "recuperacoes_acumuladas": float(ultimo_mes_carteira["recuperacoes_acumuladas"]),
-            "desembolso_acumulado": float(ultimo_mes_carteira["desembolso_acum"]),
+            "desembolso_acumulado": desembolso_total,
+            "ticket_medio": ticket_medio,
             "meses_restricoes_operacionais": meses_com_restricoes,
             "indice_sgc": float(ultimo_mes_carteira["indice_sgc"]),
             "taxa_inadimplencia_qtd": float(ultimo_mes_carteira["taxa_inadimplencia_qtd"]),
+            "taxa_inadimplencia_valor": float(ultimo_mes_carteira["taxa_inadimplencia_valor"]),
             "operacoes_inadimplentes": total_inadimplentes
         }
         
@@ -96,4 +103,6 @@ def api_info():
     return {"message": "API de Simulação de Operações de Crédito"}
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # Para acesso pela rede local, use host='0.0.0.0'
+    # Para acesso apenas local, use host='127.0.0.1' (padrão)
+    app.run(debug=True, host='0.0.0.0', port=5000)

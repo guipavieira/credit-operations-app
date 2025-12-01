@@ -442,6 +442,40 @@
                         </div>
                     </fieldset>
 
+                    <!-- Controle de Volume de Operações -->
+                    <fieldset style="margin-top: 20px; margin-bottom: 20px; background-color: #f8f9fa; border: 2px solid #007bff; border-radius: 8px;">
+                        <legend style="font-weight: 600; color: #007bff; font-size: 1.1em;">Volume de Operações</legend>
+                        <div class="form-group" style="padding: 15px;">
+                            <label for="multiplicador_volume_operacoes" style="display: block; margin-bottom: 10px;">
+                                Intensidade de Concessão:
+                                <span class="info-icon" data-info="Ajusta o volume de operações em relação ao padrão calculado automaticamente. 100% mantém o volume padrão baseado no capital do fundo. Valores menores (50%) são mais conservadores, valores maiores (150-200%) são mais agressivos.">ⓘ</span>
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div style="flex: 1; position: relative;">
+                                    <input type="range" 
+                                           id="multiplicador_volume_operacoes" 
+                                           name="multiplicador_volume_operacoes" 
+                                           min="0" 
+                                           max="2" 
+                                           step="0.1" 
+                                           value="1.0"
+                                           style="width: 100%; height: 8px; cursor: pointer;">
+                                    <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.85em; color: #666;">
+                                        <span>0%</span>
+                                        <span>50%</span>
+                                        <span style="font-weight: 600;">100%</span>
+                                        <span>150%</span>
+                                        <span>200%</span>
+                                    </div>
+                                </div>
+                                <span id="volume_value" style="min-width: 60px; font-weight: 600; color: #007bff; font-size: 1.2em;">100%</span>
+                            </div>
+                            <div id="volume_info" style="margin-top: 15px; padding: 10px; background-color: #e7f3ff; border-left: 4px solid #007bff; border-radius: 4px; font-size: 0.9em;">
+                                <strong>Operações esperadas:</strong> Varia de acordo com o capital disponível (Ex: 10-200 ops/mês)
+                            </div>
+                        </div>
+                    </fieldset>
+
                     <div class="form-actions">
                         <button type="button" id="reset-btn">Restaurar Padrões</button>
                         <button type="submit">Executar Simulação</button>
